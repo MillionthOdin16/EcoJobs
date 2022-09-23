@@ -49,7 +49,7 @@ class CommandReset(plugin: EcoPlugin) : Subcommand(plugin, "reset", "ecojobs.com
             player.activeJob = null
         }
         player.setJobXP(job, 0.0)
-        player.setJobLevel(job, 1)
+        player.setJobLevel(job, 0)
 
         sender.sendMessage(
             plugin.langYml.getMessage("reset-xp", StringUtils.FormatOption.WITHOUT_PLACEHOLDERS)
