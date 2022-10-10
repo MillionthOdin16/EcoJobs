@@ -21,3 +21,16 @@ gradle-app.setting
 
 # Mac OSX
 .DS_Store
+eco-core/core-plugin/out/production/resources/chains.yml
+eco-core/core-plugin/out/production/resources/config.yml
+eco-core/core-plugin/out/production/resources/eco.yml
+eco-core/core-plugin/out/production/resources/jobs/_example.yml
+eco-core/core-plugin/out/production/resources/jobs/beekeeper.yml
+eco-core/core-plugin/out/production/resources/jobs/builder.yml
+eco-core/core-plugin/out/production/resources/jobs/farmer.yml
+eco-core/core-plugin/out/production/resources/jobs/fisherman.yml
+eco-core/core-plugin/out/production/resources/jobs/miner.yml
+eco-core/core-plugin/out/production/resources/jobs/slayer.yml
+eco-core/core-plugin/out/production/resources/jobs/toolsmith.yml
+eco-core/core-plugin/out/production/resources/lang.yml
+eco-core/core-plugin/out/production/resources/plugin.yml
