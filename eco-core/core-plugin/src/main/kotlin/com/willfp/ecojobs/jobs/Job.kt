@@ -15,6 +15,8 @@ import com.willfp.eco.util.formatEco
 import com.willfp.eco.util.toNiceString
 import com.willfp.ecojobs.EcoJobsPlugin
 import com.willfp.ecojobs.api.event.PlayerJobExpGainEvent
+import com.willfp.ecojobs.api.event.PlayerJobJoinEvent
+import com.willfp.ecojobs.api.event.PlayerJobLeaveEvent
 import com.willfp.ecojobs.api.event.PlayerJobLevelUpEvent
 import com.willfp.libreforge.conditions.Conditions
 import com.willfp.libreforge.conditions.ConfiguredCondition
@@ -38,6 +40,9 @@ class Job(
     val name = config.getFormattedString("name")
     val description = config.getFormattedString("description")
     val isUnlockedByDefault = config.getBool("unlocked-by-default")
+    val resetsOnQuit = config.getBool("reset-on-quit")
+    val joinPrice = config.getDouble("join-price")
+    val leavePrice = config.getDouble("leave-price")
 
     val levelKey: PersistentDataKey<Int> = PersistentDataKey(
         EcoJobsPlugin.instance.namespacedKeyFactory.create("${id}_level"),
@@ -251,6 +256,8 @@ class Job(
                     .replace("%description%", this.description)
                     .replace("%job%", this.name)
                     .replace("%level%", (forceLevel ?: player.getJobLevel(this)).toString())
+                    .replace("%join_price%", NumberUtils.format(this.joinPrice))
+                    .replace("%leave_price%", NumberUtils.format(this.leavePrice))
             }
             .toMutableList()
 
@@ -365,7 +372,33 @@ private val activeJobKey: PersistentDataKey<String> = PersistentDataKey(
 
 var OfflinePlayer.activeJob: Job?
     get() = Jobs.getByID(this.profile.read(activeJobKey))
-    set(value) = this.profile.write(activeJobKey, value?.id ?: "")
+    set(job) {
+        val oldJob = this.activeJob
+
+        if (oldJob != job) {
+            // Have to check for oldJob too to have null safety
+            if (job == null && oldJob != null) {
+                val event = PlayerJobLeaveEvent(this, oldJob)
+                Bukkit.getPluginManager().callEvent(event)
+
+                if (event.isCancelled) {
+                    return
+                }
+            }
+
+            // Not using else because null safety as well
+            if (job != null) {
+                val event = PlayerJobJoinEvent(this, job, oldJob)
+                Bukkit.getPluginManager().callEvent(event)
+
+                if (event.isCancelled) {
+                    return
+                }
+            }
+        }
+
+        this.profile.write(activeJobKey, job?.id ?: "")
+    }
 
 val OfflinePlayer.activeJobLevel: JobLevel?
     get() {
@@ -378,6 +411,11 @@ fun OfflinePlayer.getJobLevel(job: Job): Int =
 
 fun OfflinePlayer.setJobLevel(job: Job, level: Int) =
     this.profile.write(job.levelKey, level)
+
+fun OfflinePlayer.resetJob(job: Job) {
+    this.setJobLevel(job, 1)
+    this.setJobXP(job, 0.0)
+}
 
 fun OfflinePlayer.getJobProgress(job: Job): Double {
     val currentXP = this.getJobXP(job)

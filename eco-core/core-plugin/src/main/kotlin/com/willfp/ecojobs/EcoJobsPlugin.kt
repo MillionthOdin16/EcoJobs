@@ -7,6 +7,8 @@ import com.willfp.ecojobs.commands.CommandEcojobs
 import com.willfp.ecojobs.commands.CommandJobs
 import com.willfp.ecojobs.jobs.JobLevelListener
 import com.willfp.ecojobs.jobs.JobTriggerXPGainListener
+import com.willfp.ecojobs.jobs.PriceHandler
+import com.willfp.ecojobs.jobs.ResetOnQuitListener
 import com.willfp.ecojobs.jobs.activeJob
 import com.willfp.ecojobs.jobs.activeJobLevel
 import com.willfp.libreforge.LibReforgePlugin
@@ -28,6 +30,11 @@ class EcoJobsPlugin : LibReforgePlugin() {
 
         PlayerPlaceholder(
             this,
+            "job_level"
+        ) { it.activeJobLevel?.level.toString() ?: "" }.register()
+
+        PlayerPlaceholder(
+            this,
             "job_id"
         ) { it.activeJob?.id ?: "" }.register()
     }
@@ -42,7 +49,9 @@ class EcoJobsPlugin : LibReforgePlugin() {
     override fun loadListeners(): List<Listener> {
         return listOf(
             JobLevelListener(this),
-            JobTriggerXPGainListener
+            JobTriggerXPGainListener,
+            ResetOnQuitListener,
+            PriceHandler
         )
     }
 
