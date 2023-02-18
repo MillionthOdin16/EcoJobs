@@ -38,6 +38,7 @@ import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import java.time.Duration
 import java.util.DoubleSummaryStatistics
 import java.util.Objects
 import java.util.concurrent.TimeUnit
@@ -47,6 +48,10 @@ import kotlin.math.max
 class Job(
     val id: String, val config: Config, private val plugin: EcoJobsPlugin
 ) {
+    private val topCache = Caffeine.newBuilder()
+        .expireAfterWrite(Duration.ofSeconds(plugin.configYml.getInt("leaderboard-cache-lifetime").toLong()))
+        .build<Int, LeaderboardCacheEntry?>()
+
     val name = config.getFormattedString("name")
     val description = config.getFormattedString("description")
     val isUnlockedByDefault = config.getBool("unlocked-by-default")
@@ -272,6 +277,7 @@ class Job(
                     }
                 }).replace("%description%", this.description).replace("%job%", this.name)
                 .replace("%level%", (forceLevel ?: player.getJobLevel(this)).toString())
+                .replace("%level_numeral%", NumberUtils.toNumeral(forceLevel ?: player.getJobLevel(this)))
                 .replace("%join_price%", this.joinPrice.getDisplay(player))
                 .replace("%leave_price%", this.leavePrice.getDisplay(player))
         }.toMutableList()
@@ -308,7 +314,7 @@ class Job(
 
         return ItemStackBuilder(base).setDisplayName(
             plugin.configYml.getFormattedString("gui.job-icon.name").replace("%level%", level.toString())
-                .replace("%job%", this.name)
+                .replace("%level_numeral%", NumberUtils.toNumeral(level)).replace("%job%", this.name)
         ).addLoreLines {
             injectPlaceholdersInto(
                 plugin.configYml.getStrings("gui.job-icon.lore"), player
@@ -328,7 +334,7 @@ class Job(
         val base = baseItem.clone()
         return ItemStackBuilder(base).setDisplayName(
             plugin.configYml.getFormattedString("gui.job-info.active.name")
-                .replace("%level%", player.getJobLevel(this).toString()).replace("%job%", this.name)
+                .replace("%level%", player.getJobLevel(this).toString()).replace("%level_numeral%", NumberUtils.toNumeral(player.getJobLevel(this))).replace("%job%", this.name)
         ).addLoreLines {
             injectPlaceholdersInto(plugin.configYml.getStrings("gui.job-info.active.lore"), player)
         }.build()
@@ -354,6 +360,14 @@ class Job(
         return jobXpGains.sumOf { it.getCount(event) }
     }
 
+    fun getTop(place: Int): LeaderboardCacheEntry? {
+        return topCache.get(place) {
+            val players = Bukkit.getOfflinePlayers().sortedByDescending { it.getJobLevel(this) }
+            val target = players.getOrNull(place-1) ?: return@get null
+            return@get LeaderboardCacheEntry(target, target.getJobLevel(this))
+        }
+    }
+
     override fun equals(other: Any?): Boolean {
         if (other !is Job) {
             return false
@@ -372,6 +386,11 @@ private class LevelPlaceholder(
 ) {
     operator fun invoke(level: Int) = function(level)
 }
+
+data class LeaderboardCacheEntry(
+    val player: OfflinePlayer,
+    val amount: Int
+)
 
 private fun Collection<LevelPlaceholder>.format(string: String, level: Int): String {
     var process = string
